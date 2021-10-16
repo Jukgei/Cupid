@@ -1,6 +1,6 @@
 #include "sd_card.h"
 
-sdmmc_card_t * sd_card_init(void)
+sdcard_config_t * sd_card_init(void)
 {
     esp_err_t ret;
     // Options for mounting the filesystem.
@@ -22,6 +22,7 @@ sdmmc_card_t * sd_card_init(void)
     ESP_LOGI(TAG, "Using SPI peripheral");
 
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    
     spi_bus_config_t bus_cfg = {
         .mosi_io_num = PIN_NUM_MOSI,
         .miso_io_num = PIN_NUM_MISO,
@@ -30,7 +31,8 @@ sdmmc_card_t * sd_card_init(void)
         .quadhd_io_num = -1,
         .max_transfer_sz = 4000,
     };
-    ret = spi_bus_initialize(host.slot, &bus_cfg, SPI_DMA_CHAN);
+    ret = spi_bus_initialize((spi_host_device_t)host.slot, &bus_cfg, SPI_DMA_CHAN);
+    
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize bus.");
         return NULL;
@@ -54,11 +56,32 @@ sdmmc_card_t * sd_card_init(void)
         }
         return NULL;
     }
-    return card;
+    sdcard_config_t * sdcard_config = (sdcard_config_t * )malloc(sizeof(sdcard_config_t));
+    sdcard_config->card = card;
+    sdcard_config->host = host;
+
+    return sdcard_config;
 }
 
-void sd_card_example(sdmmc_card_t * card)
+void sd_card_deinit(sdcard_config_t * sdcard_config)
 {
+    sdmmc_card_t * card = sdcard_config->card;
+    sdmmc_host_t host = sdcard_config->host;
+    
+    const char mount_point[] = MOUNT_POINT;
+    
+    esp_vfs_fat_sdcard_unmount(mount_point, card);
+    ESP_LOGI(TAG, "Card unmounted");
+
+    spi_bus_free((spi_host_device_t)host.slot);
+    free(sdcard_config);
+}
+
+void sd_card_example(sdcard_config_t * sdcard_config)
+{
+    
+    sdmmc_card_t * card = sdcard_config->card;
+    sdmmc_host_t host = sdcard_config->host;
 
     // Card has been initialized, print its properties
     sdmmc_card_print_info(stdout, card);
@@ -111,5 +134,6 @@ void sd_card_example(sdmmc_card_t * card)
     esp_vfs_fat_sdcard_unmount(mount_point, card);
     ESP_LOGI(TAG, "Card unmounted");
 
-    /* spi_bus_free(host.slot); */
+    spi_bus_free(host.slot);
+    free(sdcard_config);
 }

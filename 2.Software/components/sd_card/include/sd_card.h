@@ -17,16 +17,25 @@
 #define MOUNT_POINT "/sdcard"
 #define SPI_DMA_CHAN    1
 
-#define PIN_NUM_MISO 2
+#define PIN_NUM_MISO 5
 #define PIN_NUM_MOSI 15
 #define PIN_NUM_CLK  14
 #define PIN_NUM_CS   13
 
 static const char *TAG = "sd_card";
 
+typedef struct {
+    sdmmc_card_t * card;
+    sdmmc_host_t host;
+}sdcard_config_t;
+
 /* void sd_card_init(); */
-sdmmc_card_t * sd_card_init(void);
-void sd_card_example(sdmmc_card_t * card);
+sdcard_config_t * sd_card_init(void);
+void sd_card_example(sdcard_config_t * sdcard_config);
+void sd_card_deinit(sdcard_config_t * sdcard_config);
+
+
+
 #endif
 
 
