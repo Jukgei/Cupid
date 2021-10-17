@@ -13,12 +13,15 @@
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "sd_card.h"
+#include "nrf24l01.h"
 
 void app_main(void)
 {
     printf("Hello world!\n");
     
-    sd_card_example(sd_card_init());
+    /* sd_card_example(sd_card_init()); */
+
+    nrf_example();
     /* Print chip information */
     /* esp_chip_info_t chip_info; */
     /* esp_chip_info(&chip_info); */
