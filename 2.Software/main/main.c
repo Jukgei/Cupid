@@ -21,7 +21,8 @@ void app_main(void)
     
     /* sd_card_example(sd_card_init()); */
 
-    nrf_example();
+    xTaskCreatePinnedToCore(nrf_task, "nrf_task", 1024*2, NULL, 1, NULL, 1);
+    /* nrf_example(); */
     /* Print chip information */
     /* esp_chip_info_t chip_info; */
     /* esp_chip_info(&chip_info); */

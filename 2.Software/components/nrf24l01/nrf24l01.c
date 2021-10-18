@@ -182,13 +182,13 @@ unsigned char SPI_Read_Buf(spi_device_handle_t nrf_spi, unsigned char reg,unsign
     /* gpio_set_level(NRF_CS_PIN, 0); */
 	status = SPI_ReadWriteByte(nrf_spi, reg);
 	for(uchar_ctr = 0;uchar_ctr<uchars;uchar_ctr++)
-		pBuf[uchar_ctr] = SPI_ReadWriteByte(nrf_spi, NOP);
+		pBuf[uchar_ctr] = SPI_ReadWriteByte(nrf_spi, 0x00);
     /* gpio_set_level(NRF_CS_PIN, 1); */
     nrf_cs_high();
 	return status;
 }
 
-unsigned char NRF24L01_Check(spi_device_handle_t nrf_spi)
+bool NRF24L01_Check(spi_device_handle_t nrf_spi)
 {
 	unsigned char buf[5] = {0xA5,0xA5,0xA5,0xA5,0xA5};
 	unsigned char i;
@@ -204,8 +204,10 @@ unsigned char NRF24L01_Check(spi_device_handle_t nrf_spi)
 		if(buf[i] != 0xA5)
 			break;
 	}
-	if(i != 5) return 1;         //错误
-	else 			 return 0;				 //正确
+	if(i != 5) 
+        return false;         //错误
+	else 			 
+        return true;				 //正确
 }
 
 void NRF_TX_Mode(spi_device_handle_t nrf_spi)
@@ -226,25 +228,69 @@ void NRF_TX_Mode(spi_device_handle_t nrf_spi)
 	/* CE = 1; */
 }
 
+void NRF_RX_Mode(spi_device_handle_t nrf_spi)
+{
+    nrf_ce_low();
+
+    SPI_Write_Buf(nrf_spi, NRF_WRITE_REG+RX_ADDR_P0, RX_ADDRESS, RX_ADR_WIDTH);
+
+    SPI_RW_Reg(nrf_spi, NRF_WRITE_REG+EN_AA, 0x01);
+    
+    SPI_RW_Reg(nrf_spi, NRF_WRITE_REG+EN_RXADDR,0x01);//使能通道0的接收地址    
+
+    SPI_RW_Reg(nrf_spi, NRF_WRITE_REG+RF_CH,CHANAL);      //设置RF通信频率    
+
+    SPI_RW_Reg(nrf_spi, NRF_WRITE_REG+RX_PW_P0,RX_PLOAD_WIDTH);//选择通道0的有效数据宽度      
+
+    SPI_RW_Reg(nrf_spi, NRF_WRITE_REG+RF_SETUP,0x0f); //设置TX发射参数,0db增益,2Mbps,低噪声增益开启   
+
+    SPI_RW_Reg(nrf_spi, NRF_WRITE_REG+CONFIG, 0x0f);
+
+    nrf_ce_high();
+}
+
 unsigned char NRF_Tx_Dat(spi_device_handle_t nrf_spi, unsigned char *txbuf)
 {
 	unsigned char state;
-	/* gpio_set_level(NRF_CE_PIN, 0); */
     nrf_ce_low();
 	SPI_Write_Buf(nrf_spi, WR_TX_PLOAD,txbuf,TX_PLOAD_WIDTH);
     nrf_ce_high();
-    /* gpio_set_level(NRF_CE_PIN, 1); */
-    while(gpio_get_level(NRF_IQR_PIN) != 0){printf("..\t");vTaskDelay(20);}
+    while(gpio_get_level(NRF_IQR_PIN) != 0){vTaskDelay(5);}
 	state = SPI_Read_Reg(nrf_spi, STATUS);
 	SPI_RW_Reg(nrf_spi, NRF_WRITE_REG+STATUS,state);
 	SPI_RW_Reg(nrf_spi, FLUSH_TX,NOP);
 	if(state&MAX_RT)                     //达到最大重发次数
-			 return MAX_RT; 
-
+		return MAX_RT; 
 	else if(state&TX_DS)                  //发送完成
-		 	return TX_DS;
-	 else						  
-			return state;                 //其他原因发送失败
+		return TX_DS;
+    else						  
+		return state;                 //其他原因发送失败
+}
+
+uint8_t nrf_rx_dat(spi_device_handle_t nrf_spi, uint8_t * rxbuf)
+{
+    uint8_t state;
+    nrf_ce_high();
+
+    /* while(gpio_get_level(NRF_IQR_PIN) == 0) */
+    if(gpio_get_level(NRF_IQR_PIN) == 0)
+    {
+        nrf_ce_low();
+
+        state = SPI_Read_Reg(nrf_spi, STATUS); 
+
+        SPI_RW_Reg(nrf_spi, NRF_WRITE_REG+STATUS, state);
+
+        if (state&RX_DR)
+        {
+            SPI_Read_Buf(nrf_spi, RD_RX_PLOAD, rxbuf, RX_PLOAD_WIDTH);
+            SPI_RW_Reg(nrf_spi, FLUSH_RX, NOP);
+            return RX_DR;
+        }
+        else
+            return state;
+    }
+    return 0;
 }
 
 void NRF_Sleep(spi_device_handle_t nrf_spi)
@@ -258,22 +304,86 @@ void NRF_Work(spi_device_handle_t nrf_spi)
 	
 }
 
+void nrf_task(void * pvParameter)
+{
+    // nrf init
+    /* nrf_cs_high(); */
+    spi_device_handle_t nrf_spi = nrf_spi_init();
+    nrf_cs_high();
+    NRF_Work(nrf_spi);     
+    vTaskDelay(1);
+    if (NRF24L01_Check(nrf_spi))
+#ifndef RECEIVER
+        sender(nrf_spi);
+#else
+        receiver(nrf_spi);
+#endif
+    else
+        printf("nrf check error\n");
+}
+
+void receiver(spi_device_handle_t nrf_spi)
+{
+    printf("receiver task run\n");
+    NRF_RX_Mode(nrf_spi);
+    while(1)
+    {
+        uint8_t * rx_buff = (uint8_t*)malloc(sizeof(uint8_t)* RX_PLOAD_WIDTH);
+        uint8_t ret = nrf_rx_dat(nrf_spi, rx_buff);
+        if (ret == RX_DR)
+        {
+            for(uint8_t i = 0; i < RX_PLOAD_WIDTH; i++)
+                printf("0x%x\t", rx_buff[i]);
+            printf("\n");
+        }
+        else if (ret == 0)
+            printf("iqr pin is high, data not receive\n");
+        else
+            printf("receive err, state 0x%x", ret);
+        free(rx_buff);
+        vTaskDelay(NRF_TASK_DELAY);
+    }
+}
+
+void sender(spi_device_handle_t nrf_spi)
+{
+    printf("send task run\n");
+    NRF_TX_Mode(nrf_spi);
+    while(1)
+    {
+        uint8_t tx_buff[] = {2,2,2,2};
+        uint8_t result = NRF_Tx_Dat(nrf_spi, tx_buff);
+        if (result==0)
+            printf("nrf send fail, state is 0x%x\n", result);
+        else if (result == MAX_RT)
+            printf("nrf send max rt\n");
+        else if (result == TX_DS)
+            printf("nrf send success\n");
+        else
+            printf("nrf other\n");
+
+        vTaskDelay(NRF_TASK_DELAY);
+    }
+}
+
 void nrf_example(void)
 {
     /* nrf_cs_low(); */
     nrf_cs_high();
     printf("nrf example start\n");
     spi_device_handle_t nrf_spi = nrf_spi_init();
-    /* uint8_t result = NRF24L01_Check(nrf_spi); */
-    /* if (result == 0) */
-    /*     printf("nrf check success\n"); */
-    /* else */
-    /*     printf("nrf check fail\n"); */
-    /* printf("nrf ready to work config\n"); */
-    /* NRF_Work(nrf_spi); */     
-    /* printf("nrf work config\n"); */
+
+    printf("nrf ready to work config\n");
+    NRF_Work(nrf_spi);     
+    vTaskDelay(1);
+    uint8_t result = NRF24L01_Check(nrf_spi);
+    if (result == 0)
+        printf("nrf check success\n");
+    else
+        printf("nrf check fail\n");
+    printf("nrf work config\n");
     /* NRF_TX_Mode(nrf_spi); */
-    /* printf("nrf tx config\n"); */
+    printf("nrf tx config\n");
     /* uint8_t tx_buff[] = {2,2,2,2}; */
     /* result = NRF_Tx_Dat(nrf_spi, tx_buff); */
     /* printf("nrf send result state 0x%x\n", result); */
