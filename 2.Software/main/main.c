@@ -13,15 +13,19 @@
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "sd_card.h"
+#include "gui.h"
 #include "nrf24l01.h"
+
+#define HHH "hh"
 
 void app_main(void)
 {
-    printf("Hello world!\n");
+    printf(HHH"Hello world!\n");
     
-    /* sd_card_example(sd_card_init()); */
+    sd_card_example(sd_card_init());
 
-    xTaskCreatePinnedToCore(nrf_task, "nrf_task", 1024*2, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(guiTask, "guiTask", 1024*10, NULL, 1, NULL, 1);
+    /* xTaskCreatePinnedToCore(nrf_task, "nrf_task", 1024*2, NULL, 1, NULL, 1); */
     /* nrf_example(); */
     /* Print chip information */
     /* esp_chip_info_t chip_info; */
