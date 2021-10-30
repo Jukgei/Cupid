@@ -12,12 +12,14 @@
 #include "driver/spi_common.h"
 #include "sdmmc_cmd.h"
 #include "driver/sdmmc_host.h"
+// file system interface 
+#include "lvgl.h"
 
 /* #define SPI_DMA_CHAN    host.slot */
-#define MOUNT_POINT "/sdcard"
-#define SPI_DMA_CHAN    1
+#define MOUNT_POINT "/s"
+#define SPI_DMA_CHAN    2
 
-#define PIN_NUM_MISO 5
+#define PIN_NUM_MISO 10
 #define PIN_NUM_MOSI 15
 #define PIN_NUM_CLK  14
 #define PIN_NUM_CS   13
@@ -33,8 +35,14 @@ typedef struct {
 sdcard_config_t * sd_card_init(void);
 void sd_card_example(sdcard_config_t * sdcard_config);
 void sd_card_deinit(sdcard_config_t * sdcard_config);
+void lv_interface_test();
 
-
+lv_fs_res_t sd_card_close(lv_fs_drv_t * drv, void * file_p);
+/* static void * sd_card_open(lv_fs_drv_t * drv, const char * path, lv_fs_mode_t mode); */
+lv_fs_res_t sd_card_open(lv_fs_file_t * f, const char * path, lv_fs_mode_t mode);
+lv_fs_res_t sd_card_read(lv_fs_drv_t * drv, void * f, void * ptr, uint32_t nmemb, uint32_t * br);
+lv_fs_res_t sd_card_write(lv_fs_drv_t * drv, void * f, const void * ptr, uint32_t nmemb, uint32_t * bw);
+lv_fs_res_t sd_card_size(lv_fs_drv_t * drv, void * f, uint32_t * size_p);
 
 #endif
 
