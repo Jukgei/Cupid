@@ -12,6 +12,7 @@
 #include "lvgl_helpers.h"
 #include "esp_timer.h"
 #include "esp_log.h"
+#include "sd_card.h" 
 
 #define TAG "GUI"
 #define CONFIG_LOG_DEFAULT_LEVEL 3

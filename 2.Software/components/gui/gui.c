@@ -1,6 +1,5 @@
 #include "gui.h"
 
-
 lv_obj_t * ltr_label;
 int cnt = 1;
 
@@ -9,14 +8,36 @@ void Gui_Task()
 
 }
 
+void lv_file_system_init()
+{
+    lv_fs_drv_t drv;
+    lv_fs_drv_init(&drv);
+    
+    drv.open_cb = sd_card_open;
+    drv.letter = 's';
+    drv.close_cb = sd_card_close;
+    drv.read_cb = sd_card_read;
+    drv.write_cb = sd_card_write;
+    drv.size_cb = sd_card_size;
+    /* if (drv.open_cb == NULL) */
+    /*     printf("drv open_cb is NULL\n"); */
+
+    lv_fs_drv_register(&drv);
+}
+
 void guiTask(void *pvParameter) 
 {
 
     (void) pvParameter;
     xGuiSemaphore = xSemaphoreCreateMutex();
+    
+    /* lv_file_system_init(); */
 
     lv_init();
-
+    
+    // must be called after lv_init()
+    lv_file_system_init();
+    
     /* Initialize SPI or I2C bus used by the drivers */
     lvgl_driver_init();
     
@@ -83,10 +104,12 @@ void guiTask(void *pvParameter)
 
     /* Create the demo application */
     /* create_demo_application(); */
+
     lv_png_init();
-    LV_IMG_DECLARE(png_decoder_test);
+    /* LV_IMG_DECLARE(png_decoder_test); */
     lv_obj_t *img = lv_img_create(lv_scr_act(), NULL);
-    lv_img_set_src(img, &png_decoder_test);
+    /* lv_img_set_src(img, &png_decoder_test); */
+    lv_img_set_src(img,"/s/pic_1.png");
     while (1) {
         /* Delay 1 tick (assumes FreeRTOS tick is 10ms */
         vTaskDelay(pdMS_TO_TICKS(10));

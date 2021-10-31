@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.5)
 
 idf_component_register(SRCS "gui.c"
     INCLUDE_DIRS "include"
-    REQUIRES lvgl lv_lib_png)
+    REQUIRES lvgl lv_lib_png sd_card)
 # include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
 
