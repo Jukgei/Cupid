@@ -22,9 +22,15 @@ void app_main(void)
 {
     printf(HHH"Hello world!\n");
     
-    sd_card_example(sd_card_init());
+    sdcard_config_t * sdcard = sd_card_init();
+    
+    lv_interface_test();
+    /* sd_card_open(); */
 
-    xTaskCreatePinnedToCore(guiTask, "guiTask", 1024*10, NULL, 1, NULL, 1);
+    /* sd_card_deinit(sdcard); */
+    /* sd_card_example(sd_card_init()); */
+
+    xTaskCreatePinnedToCore(guiTask, "guiTask", 1024*60, NULL, 1, NULL, 1);
     /* xTaskCreatePinnedToCore(nrf_task, "nrf_task", 1024*2, NULL, 1, NULL, 1); */
     /* nrf_example(); */
     /* Print chip information */
