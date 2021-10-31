@@ -38,8 +38,8 @@ void sd_card_deinit(sdcard_config_t * sdcard_config);
 void lv_interface_test();
 
 lv_fs_res_t sd_card_close(lv_fs_drv_t * drv, void * file_p);
-/* static void * sd_card_open(lv_fs_drv_t * drv, const char * path, lv_fs_mode_t mode); */
-lv_fs_res_t sd_card_open(lv_fs_file_t * f, const char * path, lv_fs_mode_t mode);
+void * sd_card_open(lv_fs_drv_t * drv, const char * path, lv_fs_mode_t mode);
+/* lv_fs_res_t sd_card_open(lv_fs_drv_t * drv, void * f, const char * path, lv_fs_mode_t mode); */
 lv_fs_res_t sd_card_read(lv_fs_drv_t * drv, void * f, void * ptr, uint32_t nmemb, uint32_t * br);
 lv_fs_res_t sd_card_write(lv_fs_drv_t * drv, void * f, const void * ptr, uint32_t nmemb, uint32_t * bw);
 lv_fs_res_t sd_card_size(lv_fs_drv_t * drv, void * f, uint32_t * size_p);

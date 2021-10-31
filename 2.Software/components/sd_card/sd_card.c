@@ -78,15 +78,14 @@ void sd_card_deinit(sdcard_config_t * sdcard_config)
     free(sdcard_config);
 }
 
-lv_fs_res_t sd_card_open(lv_fs_file_t * f, const char * path, lv_fs_mode_t mode)
+void * sd_card_open(lv_fs_drv_t * drv, const char * path, lv_fs_mode_t mode)
 {
     const char mount_point[] = MOUNT_POINT;
     // Use POSIX and C standard library functions to work with files.
     // First create a file.
     ESP_LOGI(TAG, "[LVGL interface] Opening file");
     char fpath[256];
-    sprintf(fpath, "/%s", path);
-    printf("yuki: fpath %s\n", fpath);
+    sprintf(fpath, "/s/%s", path);
     FILE * fp;
     if (mode == LV_FS_MODE_WR) 
         fp = fopen(fpath, "w");
@@ -99,12 +98,11 @@ lv_fs_res_t sd_card_open(lv_fs_file_t * f, const char * path, lv_fs_mode_t mode)
 
     if (fp == NULL) {
         ESP_LOGE(TAG, "[LVGL interface] Failed to open file for writing");
-        return LV_FS_RES_FS_ERR;
+        return fp;
     }
     fseek(fp, 0, SEEK_SET);
-    f->file_d = f;
     ESP_LOGI(TAG, "[LVGL interface] Open file success");
-    return LV_FS_RES_OK;
+    return fp;
 }
 
 lv_fs_res_t sd_card_close(lv_fs_drv_t * drv, void * file_p)
@@ -135,15 +133,20 @@ lv_fs_res_t sd_card_size(lv_fs_drv_t * drv, void * f, uint32_t * size_p)
 void lv_interface_test()
 {
 /* static void * sd_card_open(lv_fs_drv_t * drv, const char * path, lv_fs_mode_t mode) */
-    FILE * f = sd_card_open(NULL,"s/pic_1.png", LV_FS_MODE_RD);
+    /* FILE f; */
+    FILE * f = sd_card_open(NULL, "pic_1.png", LV_FS_MODE_RD);
     /* FILE * f = sd_card_open(NULL,"s/FOO1.TXT", LV_FS_MODE_RD); */
     if (f == NULL)
+    {
+        printf("yuki: f is NULL\n");
         return;
+    }
     
     uint32_t size = -1;
     sd_card_size(NULL, f, &size);
     
     printf("png_decoder_test size is %d", size);
+    sd_card_close(NULL, f);
 }
 
 void sd_card_example(sdcard_config_t * sdcard_config)
