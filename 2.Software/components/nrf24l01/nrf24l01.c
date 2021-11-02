@@ -47,11 +47,10 @@ spi_device_handle_t nrf_spi_init(void)
         /* .pre_cb=nrf_cs_low, */  
         /* .post_cb=nrf_cs_high, */
     };
+    /* esp_err_t ret = spi_bus_initialize(NRF_SPI_HOST, &buscfg, NRF_DMA_CHAN); */
+    /* ESP_ERROR_CHECK(ret); */
 
-    esp_err_t ret = spi_bus_initialize(NRF_SPI_HOST, &buscfg, NRF_DMA_CHAN);
-    ESP_ERROR_CHECK(ret);
-
-    ret = spi_bus_add_device(NRF_SPI_HOST, &devcfg, &spi);
+    esp_err_t ret1 = spi_bus_add_device(NRF_SPI_HOST, &devcfg, &spi);
     return spi;
 }
 
@@ -77,13 +76,16 @@ void nrf_ce_high(void)
 
 uint8_t spi_write_byte(spi_device_handle_t nrf_spi, uint8_t data)
 {
-    esp_err_t ret = spi_device_acquire_bus(nrf_spi, portMAX_DELAY);
+    /* printf("yuki: ready to acquire spi bus\n"); */
+    /* esp_err_t ret = spi_device_acquire_bus(nrf_spi, portMAX_DELAY); */
+    /* printf("yuki: acquire spi bus done\n"); */
     /* if (ret != ESP_OK) return; */
-    uint8_t * result = (uint8_t* )malloc(sizeof(uint8_t));
+    /* uint8_t * result = (uint8_t* )malloc(sizeof(uint8_t)); */
+    uint8_t result;
     spi_transaction_t t = {
         .length = 8,
         .tx_buffer = &data,
-        .rx_buffer = result,
+        .rx_buffer = &result,
         /* .tx_data = {data}, */
         /* .flags = (SPI_TRANS_USE_TXDATA|SPI_TRANS_USE_RXDATA), */
         /* .flags = (SPI_TRANS_USE_RXDATA), */
@@ -93,11 +95,11 @@ uint8_t spi_write_byte(spi_device_handle_t nrf_spi, uint8_t data)
     /* /1* t.tx_buffer = &data; *1/ */
     /* t.tx_data = {data}; */
     /* t.flags = SPI_TRANS_USE_TXDATA, */
-    ret = spi_device_polling_transmit(nrf_spi, &t);
+    esp_err_t ret = spi_device_polling_transmit(nrf_spi, &t);
 
-    spi_device_release_bus(nrf_spi);
+    /* spi_device_release_bus(nrf_spi); */
     /* return t.rx_data[0]; */
-    return *result;
+    return result;
 }
 
 uint8_t spi_read_byte(spi_device_handle_t nrf_spi)
@@ -348,11 +350,18 @@ void receiver(spi_device_handle_t nrf_spi)
 void sender(spi_device_handle_t nrf_spi)
 {
     printf("send task run\n");
+    esp_err_t ret = spi_device_acquire_bus(nrf_spi, portMAX_DELAY);
     NRF_TX_Mode(nrf_spi);
+    spi_device_release_bus(nrf_spi);
     while(1)
     {
         uint8_t tx_buff[] = {2,2,2,2};
+        /* printf("nrf ready to send tx dat\n"); */
+        ret = spi_device_acquire_bus(nrf_spi, portMAX_DELAY);
+        /* printf("nrf acquire bus ret is %d\n", ret == ESP_OK); */
         uint8_t result = NRF_Tx_Dat(nrf_spi, tx_buff);
+        spi_device_release_bus(nrf_spi);
+        /* printf("nrf ready to send complete\n"); */
         if (result==0)
             printf("nrf send fail, state is 0x%x\n", result);
         else if (result == MAX_RT)
