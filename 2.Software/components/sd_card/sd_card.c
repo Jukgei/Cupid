@@ -1,7 +1,11 @@
 #include "sd_card.h"
 
-sdcard_config_t * sd_card_init(void)
+sdcard_config_t * g_sdcard = NULL;
+
+/* sdcard_config_t * sd_card_init(SemaphoreHandle_t nrf_sdcard_semaphore) */
+sdcard_config_t * sd_card_init()
 {
+    
     esp_err_t ret;
     // Options for mounting the filesystem.
     // If format_if_mount_failed is set to true, SD card will be partitioned and
@@ -60,8 +64,62 @@ sdcard_config_t * sd_card_init(void)
     sdcard_config_t * sdcard_config = (sdcard_config_t * )malloc(sizeof(sdcard_config_t));
     sdcard_config->card = card;
     sdcard_config->host = host;
-
+    g_sdcard = sdcard_config;
     return sdcard_config;
+}
+
+bool sd_card_mount(SemaphoreHandle_t nrf_sdcard_semaphore, TickType_t wait_time)
+{
+    if (xQueueSemaphoreTake(nrf_sdcard_semaphore, wait_time) == pdTRUE)
+    {
+        const char mount_point[] = MOUNT_POINT;
+        sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+        host.slot = SPI3_HOST;
+        
+        sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
+        slot_config.gpio_cs = PIN_NUM_CS;
+        slot_config.host_id = host.slot;
+   
+        esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+#ifdef CONFIG_EXAMPLE_FORMAT_IF_MOUNT_FAILED
+            .format_if_mount_failed = true,
+#else
+            .format_if_mount_failed = false,
+#endif  // EXAMPLE_FORMAT_IF_MOUNT_FAILED
+            .max_files = 5,
+            .allocation_unit_size = 16 * 1024
+        };
+    
+        sdmmc_card_t* card;
+        esp_err_t ret = esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config, &mount_config, &card);
+        sdcard_config_t * sdcard_config = (sdcard_config_t * )malloc(sizeof(sdcard_config_t));
+        sdcard_config->card = card;
+        sdcard_config->host = host;
+        g_sdcard = sdcard_config;
+        if (ret == ESP_OK)
+            return true;
+        else
+        {
+            printf("sd card mount error\n");
+            return false;
+        }
+    }
+    else
+        return false;
+}
+
+/* void sd_card_release_spi_bus(sdcard_config_t * sdcard_config) */
+void sd_card_release_spi_bus(SemaphoreHandle_t nrf_sdcard_semaphore)
+{
+    sdmmc_card_t * card = g_sdcard->card;
+    sdmmc_host_t host = g_sdcard->host;
+    
+    const char mount_point[] = MOUNT_POINT;
+    esp_vfs_fat_sdcard_unmount(mount_point, card);
+    free(g_sdcard);
+    // TODO: Check if the host need to be free? 
+    g_sdcard = NULL;
+    xSemaphoreGive(nrf_sdcard_semaphore);
 }
 
 void sd_card_deinit(sdcard_config_t * sdcard_config)

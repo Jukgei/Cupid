@@ -12,6 +12,9 @@
 #include "driver/spi_common.h"
 #include "sdmmc_cmd.h"
 #include "driver/sdmmc_host.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
 // file system interface 
 #include "lvgl.h"
 
@@ -36,6 +39,8 @@ sdcard_config_t * sd_card_init(void);
 void sd_card_example(sdcard_config_t * sdcard_config);
 void sd_card_deinit(sdcard_config_t * sdcard_config);
 void lv_interface_test();
+void sd_card_release_spi_bus(SemaphoreHandle_t nrf_sdcard_semaphore);
+bool sd_card_mount(SemaphoreHandle_t nrf_sdcard_semaphore, TickType_t wait_time);
 
 lv_fs_res_t sd_card_close(lv_fs_drv_t * drv, void * file_p);
 void * sd_card_open(lv_fs_drv_t * drv, const char * path, lv_fs_mode_t mode);
