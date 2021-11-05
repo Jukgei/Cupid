@@ -6,6 +6,7 @@
 #include "driver/gpio.h"
 #include "freertos/task.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 #define TX_ADR_WIDTH 	5  	//发射地址宽度
 #define TX_PLOAD_WIDTH  4   //发射数据通道有效数据宽度0~32Byte 
@@ -76,22 +77,22 @@
 /* sbit CE  = P1^3; */
 /* sbit IQR = P2^4; */
 
-/* #define RECEIVER */ 
+#define RECEIVER 
 #ifndef RECEIVER
 #define NFR_MISO_PIN  10
 #define NRF_MOSI_PIN  15 
 #define NRF_CLK_PIN   14 
 #define NRF_CS_PIN    27
-#define NRF_CE_PIN     9
+#define NRF_CE_PIN    9
 #define NRF_IQR_PIN   25
 #define NRF_OUTPUT_PIN_SEL   ((1ULL<<NRF_CS_PIN)|(1ULL<<NRF_CE_PIN)) 
 #define NRF_INPUT_PIN_SEL (1ULL<<NRF_IQR_PIN)
 #else
-#define NFR_MISO_PIN  19
-#define NRF_MOSI_PIN  23 
-#define NRF_CLK_PIN   18
-#define NRF_CS_PIN    17
-#define NRF_CE_PIN    16
+#define NFR_MISO_PIN  22
+#define NRF_MOSI_PIN  15 
+#define NRF_CLK_PIN   14
+#define NRF_CS_PIN    27
+#define NRF_CE_PIN    26
 #define NRF_IQR_PIN   25
 #define NRF_OUTPUT_PIN_SEL   ((1ULL<<NRF_CS_PIN)|(1ULL<<NRF_CE_PIN)) 
 #define NRF_INPUT_PIN_SEL (1ULL<<NRF_IQR_PIN)
@@ -117,8 +118,8 @@ unsigned char NRF_Tx_Dat(spi_device_handle_t nrf_spi, unsigned char *txbuf);
 void NRF_Sleep(spi_device_handle_t nrf_spi);
 void NRF_Work(spi_device_handle_t nrf_spi);
 void nrf_example(void);
-void receiver(spi_device_handle_t nrf_spi);
-void sender(spi_device_handle_t nrf_spi);
+void receiver(spi_device_handle_t nrf_spi, SemaphoreHandle_t nrf_sdcard_semaphore);
+void sender(spi_device_handle_t nrf_spi, SemaphoreHandle_t nrf_sdcard_semaphore);
 void nrf_task(void * pvParameter);
 
 

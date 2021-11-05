@@ -47,8 +47,8 @@ spi_device_handle_t nrf_spi_init(void)
         /* .pre_cb=nrf_cs_low, */  
         /* .post_cb=nrf_cs_high, */
     };
-    /* esp_err_t ret = spi_bus_initialize(NRF_SPI_HOST, &buscfg, NRF_DMA_CHAN); */
-    /* ESP_ERROR_CHECK(ret); */
+    esp_err_t ret = spi_bus_initialize(NRF_SPI_HOST, &buscfg, NRF_DMA_CHAN);
+    ESP_ERROR_CHECK(ret);
 
     esp_err_t ret1 = spi_bus_add_device(NRF_SPI_HOST, &devcfg, &spi);
     return spi;
@@ -310,44 +310,66 @@ void nrf_task(void * pvParameter)
 {
     // nrf init
     /* nrf_cs_high(); */
+    SemaphoreHandle_t nrf_sdcard_semaphore = *(SemaphoreHandle_t *)pvParameter; 
     spi_device_handle_t nrf_spi = nrf_spi_init();
+    
     nrf_cs_high();
     NRF_Work(nrf_spi);     
     vTaskDelay(1);
-    if (NRF24L01_Check(nrf_spi))
+    while(1)
+    {
+        if (NRF24L01_Check(nrf_spi))
 #ifndef RECEIVER
-        sender(nrf_spi);
+            sender(nrf_spi, nrf_sdcard_semaphore);
 #else
-        receiver(nrf_spi);
+            receiver(nrf_spi, nrf_sdcard_semaphore);
 #endif
-    else
-        printf("nrf check error\n");
+        else
+        {
+            printf("nrf check error\n");
+            vTaskDelay(20);
+        }
+
+    }
+
 }
 
-void receiver(spi_device_handle_t nrf_spi)
+void receiver(spi_device_handle_t nrf_spi, SemaphoreHandle_t nrf_sdcard_semaphore)
 {
     printf("receiver task run\n");
     NRF_RX_Mode(nrf_spi);
     while(1)
     {
-        uint8_t * rx_buff = (uint8_t*)malloc(sizeof(uint8_t)* RX_PLOAD_WIDTH);
-        uint8_t ret = nrf_rx_dat(nrf_spi, rx_buff);
-        if (ret == RX_DR)
+        if (xQueueSemaphoreTake(nrf_sdcard_semaphore, portMAX_DELAY) == pdTRUE)
         {
-            for(uint8_t i = 0; i < RX_PLOAD_WIDTH; i++)
-                printf("0x%x\t", rx_buff[i]);
-            printf("\n");
+            printf("nrf get lock\n");
+            uint8_t * rx_buff = (uint8_t*)malloc(sizeof(uint8_t)* RX_PLOAD_WIDTH);
+            uint8_t ret = nrf_rx_dat(nrf_spi, rx_buff);
+            if (ret == RX_DR)
+            {
+                for(uint8_t i = 0; i < RX_PLOAD_WIDTH; i++)
+                    printf("0x%x\t", rx_buff[i]);
+                printf("\n");
+            }
+            else if (ret == 0)
+                printf("iqr pin is high, data not receive\n");
+            else
+                printf("receive err, state 0x%x", ret);
+            free(rx_buff);
+            vTaskDelay(NRF_TASK_DELAY);
+            xSemaphoreGive(nrf_sdcard_semaphore);
         }
-        else if (ret == 0)
-            printf("iqr pin is high, data not receive\n");
         else
-            printf("receive err, state 0x%x", ret);
-        free(rx_buff);
-        vTaskDelay(NRF_TASK_DELAY);
+        {
+            vTaskDelay(NRF_TASK_DELAY);
+            printf("nrf cannot get lock\n");
+        }
+            
+
     }
 }
 
-void sender(spi_device_handle_t nrf_spi)
+void sender(spi_device_handle_t nrf_spi, SemaphoreHandle_t nrf_sdcard_semaphore)
 {
     printf("send task run\n");
     esp_err_t ret = spi_device_acquire_bus(nrf_spi, portMAX_DELAY);
@@ -355,23 +377,37 @@ void sender(spi_device_handle_t nrf_spi)
     spi_device_release_bus(nrf_spi);
     while(1)
     {
-        uint8_t tx_buff[] = {2,2,2,2};
-        /* printf("nrf ready to send tx dat\n"); */
-        ret = spi_device_acquire_bus(nrf_spi, portMAX_DELAY);
-        /* printf("nrf acquire bus ret is %d\n", ret == ESP_OK); */
-        uint8_t result = NRF_Tx_Dat(nrf_spi, tx_buff);
-        spi_device_release_bus(nrf_spi);
-        /* printf("nrf ready to send complete\n"); */
-        if (result==0)
-            printf("nrf send fail, state is 0x%x\n", result);
-        else if (result == MAX_RT)
-            printf("nrf send max rt\n");
-        else if (result == TX_DS)
-            printf("nrf send success\n");
-        else
-            printf("nrf other\n");
+        if (xQueueSemaphoreTake(nrf_sdcard_semaphore, portMAX_DELAY) == pdTRUE)
+        {
+            printf("nrf get lock\n");
+            uint8_t tx_buff[] = {2,2,2,2};
+            /* printf("nrf ready to send tx dat\n"); */
+            ret = spi_device_acquire_bus(nrf_spi, portMAX_DELAY);
+            /* printf("nrf acquire bus ret is %d\n", ret == ESP_OK); */
+            uint8_t result = NRF_Tx_Dat(nrf_spi, tx_buff);
+            spi_device_release_bus(nrf_spi);
+            /* printf("nrf ready to send complete\n"); */
+            if (result==0)
+                printf("nrf send fail, state is 0x%x\n", result);
+            else if (result == MAX_RT)
+                printf("nrf send max rt\n");
+            else if (result == TX_DS)
+                printf("nrf send success\n");
+            else
+                printf("nrf other\n");
 
-        vTaskDelay(NRF_TASK_DELAY);
+            xSemaphoreGive(nrf_sdcard_semaphore);
+            printf("nrf give semaphore\n");
+            vTaskDelay(NRF_TASK_DELAY);
+            /* xSemaphoreGive(nrf_sdcard_semaphore); */
+        }
+        else
+        {
+            vTaskDelay(NRF_TASK_DELAY);
+            printf("nrf cannot get lock\n");
+        }
+            
+
     }
 }
 
