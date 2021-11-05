@@ -28,7 +28,8 @@ void lv_file_system_init()
 void guiTask(void *pvParameter) 
 {
 
-    (void) pvParameter;
+    /* (void) pvParameter; */
+    SemaphoreHandle_t nrf_sdcard_semaphore = *(SemaphoreHandle_t *)pvParameter; 
     xGuiSemaphore = xSemaphoreCreateMutex();
     
     /* lv_file_system_init(); */
@@ -36,7 +37,7 @@ void guiTask(void *pvParameter)
     lv_init();
     
     // must be called after lv_init()
-    lv_file_system_init();
+    /* lv_file_system_init(); */
     
     /* Initialize SPI or I2C bus used by the drivers */
     lvgl_driver_init();
@@ -110,14 +111,29 @@ void guiTask(void *pvParameter)
     lv_obj_t *img = lv_img_create(lv_scr_act(), NULL);
     /* lv_img_set_src(img, &png_decoder_test); */
     lv_img_set_src(img,"/s/pic_1.png");
+    bool isDisplay = false;
+    bool spi_already_release = false;
+    /* sd_card_release_spi_bus(); */
+    /* xSemaphoreGive(nrf_sdcard_semaphore); */
     while (1) {
         /* Delay 1 tick (assumes FreeRTOS tick is 10ms */
         vTaskDelay(pdMS_TO_TICKS(10));
+        if (isDisplay && spi_already_release == false)
+        {
+            sd_card_release_spi_bus(nrf_sdcard_semaphore);
+            printf("yuki: first release\n");
+            isDisplay = false;
+            spi_already_release = true;
+        }
+
+        file_test(nrf_sdcard_semaphore, cnt);
         /* demo_data_update(cnt); */
-        /* cnt++; */
+        cnt++;
         /* Try to take the semaphore, call lvgl related function on success */
         if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
+            /* printf("yuki: ui tick\n"); */
             lv_task_handler();
+            isDisplay = true;
             xSemaphoreGive(xGuiSemaphore);
 
        }
@@ -147,7 +163,8 @@ void create_demo_application(void)
     /* lv_obj_set_event_cb(ltr_label, demo_event_cb); */ 
 
     lv_obj_t * par = lv_obj_create(lv_scr_act(), NULL);
-    lv_obj_set_size(par, 240, 135);
+    /* lv_obj_set_size(par, 240, 135); */
+    lv_obj_set_size(par, 135, 240);
     lv_color_t c = LV_COLOR_WHITE;
     /* c.full = ~c.full; */
     /* printf("color is 0x%x\n", c.full); */
@@ -185,6 +202,27 @@ void demo_data_update(int value)
     lv_event_send(ltr_label, LV_EVENT_VALUE_CHANGED, &value);
 }
 
+void file_test(SemaphoreHandle_t nrf_sdcard_semaphore, uint32_t num)
+{
+    /* if (sd_card_mount(nrf_sdcard_semaphore, portMAX_DELAY) == true) */
+    if (sd_card_mount(nrf_sdcard_semaphore, 1) == true)
+    {
+        /* printf("sd card get lock"); */
+        FILE* f = fopen("/s/hello.txt", "a+");
+        if (f == NULL) {
+            ESP_LOGE(TAG, "Failed to open file for writing");
+            return;
+        }
+        fprintf(f, "Hello %d!\n", num);
+        fclose(f);
+        ESP_LOGI(TAG, "File written");
+
+        sd_card_release_spi_bus(nrf_sdcard_semaphore);
+        /* printf("sd card release lock\n"); */
+    }
+    /* else */
+    /*     printf("sd card cannot get lock\n"); */
+}
 
 uint8_t get_val_num_bit(int value)
 {

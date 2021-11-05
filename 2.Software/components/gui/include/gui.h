@@ -13,6 +13,7 @@
 #include "esp_timer.h"
 #include "esp_log.h"
 #include "sd_card.h" 
+#include <stdlib.h>
 
 #define TAG "GUI"
 #define CONFIG_LOG_DEFAULT_LEVEL 3
@@ -31,6 +32,7 @@ void demo_data_update(int value);
 
 
 uint8_t get_val_num_bit(int value);
+void file_test(SemaphoreHandle_t nrf_sdcard_semaphore, uint32_t num);
 
 #endif
 
