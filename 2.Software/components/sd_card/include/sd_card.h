@@ -22,10 +22,10 @@
 #define MOUNT_POINT "/s"
 #define SPI_DMA_CHAN    2
 
-#define PIN_NUM_MISO 10
-#define PIN_NUM_MOSI 15
+#define PIN_NUM_MISO 13
+#define PIN_NUM_MOSI 12
 #define PIN_NUM_CLK  14
-#define PIN_NUM_CS   13
+#define PIN_NUM_CS   25
 
 static const char *TAG = "sd_card";
 

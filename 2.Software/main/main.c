@@ -16,22 +16,24 @@
 #include "gui.h"
 #include "nrf24l01.h"
 
-#define HHH "hh"
+SemaphoreHandle_t nrf_sdcard_semaphore;
 
 void app_main(void)
 {
-    printf(HHH"Hello world!\n");
-    
+    printf("Hello world!\n");
+    /* SemaphoreHandle_t nrf_sdcard_semaphore; */
+    nrf_sdcard_semaphore = xSemaphoreCreateBinary();
     sdcard_config_t * sdcard = sd_card_init();
-    
-    lv_interface_test();
+   
+    /* xSemaphoreGive(nrf_sdcard_semaphore); */
+    /* lv_interface_test(); */
     /* sd_card_open(); */
 
     /* sd_card_deinit(sdcard); */
     /* sd_card_example(sd_card_init()); */
 
-    xTaskCreatePinnedToCore(guiTask, "guiTask", 1024*60, NULL, 1, NULL, 1);
-    /* xTaskCreatePinnedToCore(nrf_task, "nrf_task", 1024*2, NULL, 1, NULL, 1); */
+    xTaskCreatePinnedToCore(guiTask, "guiTask", 1024*60, (void *)&nrf_sdcard_semaphore, 1, NULL, 1);
+    xTaskCreatePinnedToCore(nrf_task, "nrf_task", 1024*2, (void *)&nrf_sdcard_semaphore, 1, NULL, 1);
     /* nrf_example(); */
     /* Print chip information */
     /* esp_chip_info_t chip_info; */

@@ -65,6 +65,7 @@ sdcard_config_t * sd_card_init()
     sdcard_config->card = card;
     sdcard_config->host = host;
     g_sdcard = sdcard_config;
+    printf("SD-Card Init finish\n");
     return sdcard_config;
 }
 

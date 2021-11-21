@@ -77,14 +77,14 @@
 /* sbit CE  = P1^3; */
 /* sbit IQR = P2^4; */
 
-#define RECEIVER 
+/* #define RECEIVER */ 
 #ifndef RECEIVER
-#define NFR_MISO_PIN  10
-#define NRF_MOSI_PIN  15 
+#define NFR_MISO_PIN  13
+#define NRF_MOSI_PIN  12 
 #define NRF_CLK_PIN   14 
 #define NRF_CS_PIN    27
-#define NRF_CE_PIN    9
-#define NRF_IQR_PIN   25
+#define NRF_CE_PIN    26
+#define NRF_IQR_PIN   15
 #define NRF_OUTPUT_PIN_SEL   ((1ULL<<NRF_CS_PIN)|(1ULL<<NRF_CE_PIN)) 
 #define NRF_INPUT_PIN_SEL (1ULL<<NRF_IQR_PIN)
 #else

@@ -47,8 +47,8 @@ spi_device_handle_t nrf_spi_init(void)
         /* .pre_cb=nrf_cs_low, */  
         /* .post_cb=nrf_cs_high, */
     };
-    esp_err_t ret = spi_bus_initialize(NRF_SPI_HOST, &buscfg, NRF_DMA_CHAN);
-    ESP_ERROR_CHECK(ret);
+    /* esp_err_t ret = spi_bus_initialize(NRF_SPI_HOST, &buscfg, NRF_DMA_CHAN); */
+    /* ESP_ERROR_CHECK(ret); */
 
     esp_err_t ret1 = spi_bus_add_device(NRF_SPI_HOST, &devcfg, &spi);
     return spi;
