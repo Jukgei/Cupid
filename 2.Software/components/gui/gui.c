@@ -29,7 +29,7 @@ void guiTask(void *pvParameter)
 {
 
     /* (void) pvParameter; */
-    SemaphoreHandle_t nrf_sdcard_semaphore = *(SemaphoreHandle_t *)pvParameter; 
+    SemaphoreHandle_t nrf_sdcard_semaphore = (SemaphoreHandle_t )pvParameter; 
     xGuiSemaphore = xSemaphoreCreateMutex();
     
     /* lv_file_system_init(); */

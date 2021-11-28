@@ -310,7 +310,7 @@ void nrf_task(void * pvParameter)
 {
     // nrf init
     /* nrf_cs_high(); */
-    SemaphoreHandle_t nrf_sdcard_semaphore = *(SemaphoreHandle_t *)pvParameter; 
+    SemaphoreHandle_t nrf_sdcard_semaphore = (SemaphoreHandle_t )pvParameter; 
     spi_device_handle_t nrf_spi = nrf_spi_init();
     
     nrf_cs_high();
@@ -340,7 +340,7 @@ void receiver(spi_device_handle_t nrf_spi, SemaphoreHandle_t nrf_sdcard_semaphor
     NRF_RX_Mode(nrf_spi);
     while(1)
     {
-        if (xQueueSemaphoreTake(nrf_sdcard_semaphore, portMAX_DELAY) == pdTRUE)
+        if (xSemaphoreTake(nrf_sdcard_semaphore, portMAX_DELAY) == pdTRUE)
         {
             printf("nrf get lock\n");
             uint8_t * rx_buff = (uint8_t*)malloc(sizeof(uint8_t)* RX_PLOAD_WIDTH);
@@ -377,7 +377,7 @@ void sender(spi_device_handle_t nrf_spi, SemaphoreHandle_t nrf_sdcard_semaphore)
     spi_device_release_bus(nrf_spi);
     while(1)
     {
-        if (xQueueSemaphoreTake(nrf_sdcard_semaphore, portMAX_DELAY) == pdTRUE)
+        if (xSemaphoreTake(nrf_sdcard_semaphore, portMAX_DELAY) == pdTRUE)
         {
             printf("nrf get lock\n");
             uint8_t tx_buff[] = {2,2,2,2};

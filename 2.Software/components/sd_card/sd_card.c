@@ -71,7 +71,7 @@ sdcard_config_t * sd_card_init()
 
 bool sd_card_mount(SemaphoreHandle_t nrf_sdcard_semaphore, TickType_t wait_time)
 {
-    if (xQueueSemaphoreTake(nrf_sdcard_semaphore, wait_time) == pdTRUE)
+    if (xSemaphoreTake(nrf_sdcard_semaphore, wait_time) == pdTRUE)
     {
         const char mount_point[] = MOUNT_POINT;
         sdmmc_host_t host = SDSPI_HOST_DEFAULT();
